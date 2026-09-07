@@ -805,6 +805,13 @@ img {
   color: var(--pink);
 }
 
+.cart-sheet__error {
+  color: var(--pink);
+  font-size: 13px;
+  font-weight: 600;
+  margin: 0 0 10px;
+}
+
 .cart-sheet__submit {
   width: 100%;
   border: none;

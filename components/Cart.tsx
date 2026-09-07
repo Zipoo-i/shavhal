@@ -19,23 +19,36 @@ export default function Cart({ open, onClose, onOrderPlaced }: CartProps) {
   const { items, total, incrementItem, decrementItem, clearCart } = useCart();
   const { table, label } = useTable();
   const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   async function handlePlaceOrder() {
     setSubmitting(true);
-    // Mock checkout handler for phase 1 — shaped to map directly onto a
-    // future POST /api/orders call once the backend exists (see §22).
-    const order: Order = {
-      id: `ORD-${Date.now().toString(36).toUpperCase()}`,
-      table: table ?? 'unspecified',
-      items,
-      total,
-      createdAt: new Date().toISOString(),
-      status: 'new',
-    };
-    await new Promise((resolve) => setTimeout(resolve, 500));
-    clearCart();
-    setSubmitting(false);
-    onOrderPlaced(order);
+    setError(null);
+    try {
+      const response = await fetch('/api/orders', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          table: table ?? 'unspecified',
+          items: items.map((i) => ({
+            productId: i.product.id,
+            quantity: i.quantity,
+          })),
+        }),
+      });
+
+      const data = await response.json();
+      if (!response.ok) {
+        throw new Error(data?.error ?? 'Could not place order');
+      }
+
+      clearCart();
+      onOrderPlaced(data.order as Order);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Could not place order');
+    } finally {
+      setSubmitting(false);
+    }
   }
 
   return (
@@ -85,6 +98,7 @@ export default function Cart({ open, onClose, onOrderPlaced }: CartProps) {
               <span>Total</span>
               <span className="cart-sheet__total-value">{formatPrice(total)}</span>
             </div>
+            {error && <p className="cart-sheet__error">{error}</p>}
             <button
               type="button"
               className="cart-sheet__submit"
